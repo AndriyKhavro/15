@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  nginx_us:
+    image: nginx
+    ports:
+      - 8001:80
+    volumes:
+      - ./us.nginx.conf:/etc/nginx/conf.d/default.conf
+
+  nginx_us_2:
+    image: nginx
+    ports:
+      - 8002:80
+    volumes:
+      - ./us2.nginx.conf:/etc/nginx/conf.d/default.conf
+
+  nginx_uk:
+    image: nginx
+    ports:
+      - 8003:80
+    volumes:
+      - ./uk.nginx.conf:/etc/nginx/conf.d/default.conf
+
+  nginx_rest:
+    image: nginx
+    ports:
+      - 8004:80
+    volumes:
+      - ./rest.nginx.conf:/etc/nginx/conf.d/default.conf
+
+  nginx_backup:
+    image: nginx
+    ports:
+      - 8005:80
+    volumes:
+      - ./backup.nginx.conf:/etc/nginx/conf.d/default.conf
+
+  nginx_load_balancer:
+    image: nemanicka/nginx-geoip-upstream-healthchecks:latest
+    ports:
+      - 8100:80
+    depends_on:
+      - nginx_us
+      - nginx_us_2
+      - nginx_uk
+      - nginx_rest
+      - nginx_backup
+    volumes:
+      - ./nginx.conf:/usr/local/nginx/conf/nginx.conf
+      - ./GeoLite2-Country.mmdb:/var/lib/GeoIP/GeoLite2-Country.mmdb
+      - ./error.log:/usr/local/nginx/logs/error.log
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: unless-stopped
+    depends_on:
+      - nginx_load_balancer
+    command:
+      - "start"
+      - "--all"
+      - "--config"
+      - "/etc/ngrok.yml"
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml
+    ports:
+      - 4040:4040
